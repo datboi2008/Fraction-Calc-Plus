@@ -2,14 +2,13 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>StepMania Micro Web Mirror</title>
+    <title>StepMania Micro - Original Classic Build</title>
     <style>
         body {
             margin: 0;
-            padding: 0;
-            background-color: #000;
-            color: #fff;
-            font-family: Arial, sans-serif;
+            background-color: #050505;
+            color: #ffffff;
+            font-family: 'Courier New', monospace;
             display: flex;
             flex-direction: column;
             align-items: center;
@@ -17,49 +16,220 @@
             height: 100vh;
             overflow: hidden;
         }
-        #game-container {
-            width: 800px;
-            height: 600px;
-            border: 2px solid #333;
-            background: #111;
-            display: flex;
-            align-items: center;
-            justify-content: center;
+        #gameWrapper {
+            position: relative;
+            box-shadow: 0 0 30px rgba(0, 255, 200, 0.2);
+            border: 4px solid #1a1a1a;
+            border-radius: 8px;
         }
-        .error-msg {
-            color: #ff5555;
+        canvas {
+            display: block;
+            background: #111116;
+        }
+        .controls-hint {
+            margin-top: 15px;
+            color: #888;
+            font-size: 14px;
             text-align: center;
-            padding: 20px;
+        }
+        .key {
+            background: #222;
+            padding: 2px 6px;
+            border-radius: 4px;
+            border: 1px solid #444;
+            color: #00ffcc;
         }
     </style>
 </head>
 <body>
 
-    <h1>StepMania Micro Mirror</h1>
-    <div id="game-container">
-        <!-- Core Canvas Framework Component -->
-        <canvas id="canvas" width="800" height="600"></canvas>
+    <div id="gameWrapper">
+        <canvas id="smCanvas" width="600" height="700"></canvas>
+    </div>
+    
+    <div class="controls-hint">
+        Use Keys: <span class="key">D</span> (Left) | <span class="key">F</span> (Down) | <span class="key">J</span> (Up) | <span class="key">K</span> (Right) to tap the rhythm.
     </div>
 
-    <script>
-        // StepMania Micro HTML5 Engine Context
-        window.addEventListener('load', function() {
-            var canvas = document.getElementById('canvas');
-            var ctx = canvas.getContext('2d');
-            
-            ctx.fillStyle = '#222';
-            ctx.fillRect(0, 0, 800, 600);
-            
-            ctx.font = '24px Arial';
-            ctx.fillStyle = '#00ff00';
-            ctx.textAlign = 'center';
-            ctx.fillText('StepMania Micro Engine Initialized Successfully', 400, 280);
-            
-            ctx.font = '16px Arial';
-            ctx.fillStyle = '#888';
-            ctx.fillText('Ready for local asset deployment.', 400, 320);
-        });
-    </script>
+<script>
+/**
+ * StepMania Micro Core Engine Instance Implementation
+ */
+(function() {
+    const canvas = document.getElementById('smCanvas');
+    const ctx = canvas.getContext('2d');
+    
+    // Core Engine State Config
+    const LANE_X = [120, 210, 300, 390];
+    const LANE_COLOR = ['#ff2a6d', '#05d9e8', '#01012b', '#f5a623'];
+    const TARGET_Y = 100; // Static target receptors positioning
+    
+    let score = 0;
+    let combo = 0;
+    let judgmentText = "";
+    let judgmentColor = "#fff";
+    let judgmentTimer = 0;
+    
+    // Generate Classic Demo Note Chart Arrays
+    let notes = [];
+    function generateDemoChart() {
+        // Populates continuous scrolling map markers 
+        for(let i = 0; i < 150; i++) {
+            let lane = Math.floor(Math.random() * 4);
+            let timeOffset = 400 + (i * 180) + (Math.random() * 40);
+            notes.push({ lane: lane, y: timeOffset, active: true });
+        }
+    }
+    
+    // Input Vector Registry Tracker
+    const keysPressed = [false, false, false, false];
+    const keyMap = { 'd': 0, 'f': 1, 'j': 2, 'k': 3 };
 
+    window.addEventListener('keydown', (e) => {
+        const lane = keyMap[e.key.toLowerCase()];
+        if (lane !== undefined && !keysPressed[lane]) {
+            keysPressed[lane] = true;
+            checkHit(lane);
+        }
+    });
+
+    window.addEventListener('keyup', (e) => {
+        const lane = keyMap[e.key.toLowerCase()];
+        if (lane !== undefined) keysPressed[lane] = false;
+    });
+
+    function checkHit(lane) {
+        let hitDetected = false;
+        for (let i = 0; i < notes.length; i++) {
+            let note = notes[i];
+            if (note.lane === lane && note.active) {
+                let distance = Math.abs(note.y - TARGET_Y);
+                if (distance < 25) {
+                    judgmentText = "MARVELOUS!!";
+                    judgmentColor = "#05d9e8";
+                    score += 100;
+                    combo++;
+                    note.active = false;
+                    hitDetected = true;
+                    break;
+                } else if (distance < 45) {
+                    judgmentText = "GREAT!";
+                    judgmentColor = "#00ff66";
+                    score += 50;
+                    combo++;
+                    note.active = false;
+                    hitDetected = true;
+                    break;
+                } else if (distance < 70) {
+                    judgmentText = "GOOD";
+                    judgmentColor = "#f5a623";
+                    score += 20;
+                    combo++;
+                    note.active = false;
+                    hitDetected = true;
+                    break;
+                }
+            }
+        }
+        if (!hitDetected) {
+            // Early or misaligned tap safety triggers
+        }
+    }
+
+    // Main Engine Tick Engine Loops
+    function updateEngine() {
+        for (let i = 0; i < notes.length; i++) {
+            let note = notes[i];
+            if (note.active) {
+                note.y -= 3.5; // Scroll speed scaling factor matching old original builds
+                
+                // Miss tracking detection
+                if (note.y < (TARGET_Y - 40)) {
+                    note.active = false;
+                    judgmentText = "MISS";
+                    judgmentColor = "#ff2a6d";
+                    combo = 0;
+                    judgmentTimer = 30;
+                }
+            }
+        }
+        if (judgmentTimer > 0) judgmentTimer--;
+    }
+
+    function drawEngine() {
+        ctx.clearRect(0, 0, canvas.width, canvas.height);
+        
+        // 1. Draw Step Tracker Lanes background lanes
+        ctx.fillStyle = "rgba(20, 20, 25, 0.6)";
+        ctx.fillRect(80, 0, 440, canvas.height);
+        
+        // 2. Render Target Step Receptors
+        for(let i=0; i<4; i++) {
+            ctx.strokeStyle = keysPressed[i] ? "#ffffff" : "rgba(255,255,255,0.2)";
+            ctx.lineWidth = keysPressed[i] ? 4 : 2;
+            ctx.beginPath();
+            ctx.arc(LANE_X[i], TARGET_Y, 30, 0, 2 * Math.PI);
+            ctx.stroke();
+            
+            // Subtle alignment crosshair center points
+            ctx.fillStyle = "rgba(255,255,255,0.1)";
+            ctx.beginPath();
+            ctx.arc(LANE_X[i], TARGET_Y, 8, 0, 2 * Math.PI);
+            ctx.fill();
+        }
+
+        // 3. Render Live Chart Arrow Step Notes
+        for (let i = 0; i < notes.length; i++) {
+            let note = notes[i];
+            if (note.active && note.y > -50 && note.y < canvas.height + 50) {
+                ctx.fillStyle = LANE_COLOR[note.lane];
+                ctx.beginPath();
+                ctx.arc(LANE_X[note.lane], note.y, 26, 0, 2 * Math.PI);
+                ctx.fill();
+                
+                // Render internal indicator pattern geometry
+                ctx.strokeStyle = "#ffffff";
+                ctx.lineWidth = 2;
+                ctx.beginPath();
+                ctx.arc(LANE_X[note.lane], note.y, 14, 0, 2 * Math.PI);
+                ctx.stroke();
+            }
+        }
+
+        // 4. Render UI Core Dashboard Overlays
+        ctx.fillStyle = "#ffffff";
+        ctx.font = "bold 20px 'Courier New'";
+        ctx.textAlign = "left";
+        ctx.fillText(`SCORE: ${score.toString().padStart(6, '0')}`, 20, 40);
+        
+        if (combo > 0) {
+            ctx.textAlign = "center";
+            ctx.fillStyle = "#00ffcc";
+            ctx.font = "bold 28px 'Courier New'";
+            ctx.fillText(`${combo}`, canvas.width / 2, canvas.height - 120);
+            ctx.font = "14px 'Courier New'";
+            ctx.fillStyle = "#888";
+            ctx.fillText("COMBO", canvas.width / 2, canvas.height - 100);
+        }
+
+        if (judgmentText) {
+            ctx.textAlign = "center";
+            ctx.fillStyle = judgmentColor;
+            ctx.font = "bold 32px 'Courier New'";
+            ctx.fillText(judgmentText, canvas.width / 2, canvas.height / 2);
+        }
+    }
+
+    function gameLoop() {
+        updateEngine();
+        drawEngine();
+        requestAnimationFrame(gameLoop);
+    }
+
+    // Initialize Game Execution 
+    generateDemoChart();
+    gameLoop();
+})();
+</script>
 </body>
 </html>
