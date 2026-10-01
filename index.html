@@ -2,11 +2,11 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <title>StepMania Micro - Original Classic Build</title>
+    <title>StepMania Micro - Playable Engine Build</title>
     <style>
         body {
             margin: 0;
-            background-color: #050505;
+            background-color: #0d0e15;
             color: #ffffff;
             font-family: 'Courier New', monospace;
             display: flex;
@@ -18,26 +18,30 @@
         }
         #gameWrapper {
             position: relative;
-            box-shadow: 0 0 30px rgba(0, 255, 200, 0.2);
-            border: 4px solid #1a1a1a;
-            border-radius: 8px;
+            box-shadow: 0 0 35px rgba(0, 255, 200, 0.25);
+            border: 4px solid #1f2330;
+            border-radius: 12px;
+            background: #11121a;
         }
         canvas {
             display: block;
-            background: #111116;
         }
         .controls-hint {
-            margin-top: 15px;
-            color: #888;
-            font-size: 14px;
+            margin-top: 20px;
+            color: #a0a5b5;
+            font-size: 15px;
             text-align: center;
+            background: rgba(255, 255, 255, 0.05);
+            padding: 8px 16px;
+            border-radius: 20px;
         }
         .key {
-            background: #222;
-            padding: 2px 6px;
-            border-radius: 4px;
-            border: 1px solid #444;
+            background: #252836;
+            padding: 3px 8px;
+            border-radius: 6px;
+            border: 1px solid #4f566b;
             color: #00ffcc;
+            font-weight: bold;
         }
     </style>
 </head>
@@ -48,40 +52,41 @@
     </div>
     
     <div class="controls-hint">
-        Use Keys: <span class="key">D</span> (Left) | <span class="key">F</span> (Down) | <span class="key">J</span> (Up) | <span class="key">K</span> (Right) to tap the rhythm.
+        👇 Tap the keys matching the falling arrows: <span class="key">D</span> (Left) | <span class="key">F</span> (Down) | <span class="key">J</span> (Up) | <span class="key">K</span> (Right)
     </div>
 
 <script>
-/**
- * StepMania Micro Core Engine Instance Implementation
- */
 (function() {
     const canvas = document.getElementById('smCanvas');
     const ctx = canvas.getContext('2d');
     
-    // Core Engine State Config
-    const LANE_X = [120, 210, 300, 390];
-    const LANE_COLOR = ['#ff2a6d', '#05d9e8', '#01012b', '#f5a623'];
-    const TARGET_Y = 100; // Static target receptors positioning
+    // Core Layout Alignment Positions
+    const LANE_X = [150, 250, 350, 450];
+    const LANE_COLOR = ['#ff2a6d', '#05d9e8', '#a352ff', '#f5a623'];
+    const TARGET_Y = 120; // Exact alignment point for checking steps
     
     let score = 0;
     let combo = 0;
-    let judgmentText = "";
-    let judgmentColor = "#fff";
-    let judgmentTimer = 0;
+    let maxCombo = 0;
+    let judgmentText = "GET READY!";
+    let judgmentColor = "#00ffcc";
+    let judgmentTimer = 120;
     
-    // Generate Classic Demo Note Chart Arrays
+    // Generate Continuous Scrolling StepChart Map
     let notes = [];
-    function generateDemoChart() {
-        // Populates continuous scrolling map markers 
-        for(let i = 0; i < 150; i++) {
+    function buildSongChart() {
+        let lastTime = 650;
+        // Generate 200 sequential rhythmic steps
+        for(let i = 0; i < 200; i++) {
             let lane = Math.floor(Math.random() * 4);
-            let timeOffset = 400 + (i * 180) + (Math.random() * 40);
-            notes.push({ lane: lane, y: timeOffset, active: true });
+            // Dynamic pacing interval spacing matching classic step tracking speeds
+            let stepSpacing = 160 + (Math.floor(Math.random() * 3) * 60); 
+            lastTime += stepSpacing;
+            notes.push({ lane: lane, y: lastTime, active: true });
         }
     }
     
-    // Input Vector Registry Tracker
+    // Global Input Vector Registries
     const keysPressed = [false, false, false, false];
     const keyMap = { 'd': 0, 'f': 1, 'j': 2, 'k': 3 };
 
@@ -89,7 +94,7 @@
         const lane = keyMap[e.key.toLowerCase()];
         if (lane !== undefined && !keysPressed[lane]) {
             keysPressed[lane] = true;
-            checkHit(lane);
+            evaluateStepTiming(lane);
         }
     });
 
@@ -98,137 +103,177 @@
         if (lane !== undefined) keysPressed[lane] = false;
     });
 
-    function checkHit(lane) {
-        let hitDetected = false;
+    function evaluateStepTiming(lane) {
+        let evaluated = false;
         for (let i = 0; i < notes.length; i++) {
             let note = notes[i];
             if (note.lane === lane && note.active) {
-                let distance = Math.abs(note.y - TARGET_Y);
-                if (distance < 25) {
+                let precisionDistance = Math.abs(note.y - TARGET_Y);
+                
+                // Classic StepMania Hit Accuracy Windows
+                if (precisionDistance < 22) {
                     judgmentText = "MARVELOUS!!";
                     judgmentColor = "#05d9e8";
                     score += 100;
                     combo++;
                     note.active = false;
-                    hitDetected = true;
+                    evaluated = true;
+                    judgmentTimer = 45;
                     break;
-                } else if (distance < 45) {
+                } else if (precisionDistance < 40) {
                     judgmentText = "GREAT!";
                     judgmentColor = "#00ff66";
-                    score += 50;
+                    score += 60;
                     combo++;
                     note.active = false;
-                    hitDetected = true;
+                    evaluated = true;
+                    judgmentTimer = 45;
                     break;
-                } else if (distance < 70) {
+                } else if (precisionDistance < 65) {
                     judgmentText = "GOOD";
                     judgmentColor = "#f5a623";
-                    score += 20;
+                    score += 30;
                     combo++;
                     note.active = false;
-                    hitDetected = true;
+                    evaluated = true;
+                    judgmentTimer = 45;
                     break;
                 }
             }
         }
-        if (!hitDetected) {
-            // Early or misaligned tap safety triggers
-        }
+        if (evaluated && combo > maxCombo) maxCombo = combo;
     }
 
-    // Main Engine Tick Engine Loops
-    function updateEngine() {
+    // Main Engine Physics Tick Runs
+    function processEnginePhysics() {
         for (let i = 0; i < notes.length; i++) {
             let note = notes[i];
             if (note.active) {
-                note.y -= 3.5; // Scroll speed scaling factor matching old original builds
+                note.y -= 4.2; // Smooth baseline scrolling velocity matching original micro package builds
                 
-                // Miss tracking detection
-                if (note.y < (TARGET_Y - 40)) {
+                // Automated processing for missing targets completely
+                if (note.y < (TARGET_Y - 45)) {
                     note.active = false;
                     judgmentText = "MISS";
                     judgmentColor = "#ff2a6d";
                     combo = 0;
-                    judgmentTimer = 30;
+                    judgmentTimer = 40;
                 }
             }
         }
         if (judgmentTimer > 0) judgmentTimer--;
+        else if (judgmentTimer === 0 && judgmentText !== "") {
+            judgmentText = "";
+        }
     }
 
-    function drawEngine() {
+    // Main Application Engine Render Graph Layers
+    function renderGraphics() {
         ctx.clearRect(0, 0, canvas.width, canvas.height);
         
-        // 1. Draw Step Tracker Lanes background lanes
-        ctx.fillStyle = "rgba(20, 20, 25, 0.6)";
-        ctx.fillRect(80, 0, 440, canvas.height);
+        // 1. Draw Step Tracks Lane Track Boundaries
+        ctx.fillStyle = "rgba(18, 19, 31, 0.85)";
+        ctx.fillRect(90, 0, 420, canvas.height);
         
-        // 2. Render Target Step Receptors
-        for(let i=0; i<4; i++) {
-            ctx.strokeStyle = keysPressed[i] ? "#ffffff" : "rgba(255,255,255,0.2)";
-            ctx.lineWidth = keysPressed[i] ? 4 : 2;
+        // Secondary Guide Rails separating lanes
+        ctx.strokeStyle = "rgba(255, 255, 255, 0.04)";
+        ctx.lineWidth = 2;
+        for(let i = 0; i <= 4; i++) {
+            let lineX = 90 + (i * 105);
             ctx.beginPath();
-            ctx.arc(LANE_X[i], TARGET_Y, 30, 0, 2 * Math.PI);
+            ctx.moveTo(lineX, 0);
+            ctx.lineTo(lineX, canvas.height);
+            ctx.stroke();
+        }
+        
+        // 2. Render Structural Receptor Target Zones (Top Stationary Track Elements)
+        for(let i=0; i<4; i++) {
+            ctx.strokeStyle = keysPressed[i] ? "#ffffff" : "rgba(255,255,255,0.25)";
+            ctx.lineWidth = keysPressed[i] ? 5 : 3;
+            
+            ctx.beginPath();
+            ctx.arc(LANE_X[i], TARGET_Y, 34, 0, 2 * Math.PI);
             ctx.stroke();
             
-            // Subtle alignment crosshair center points
-            ctx.fillStyle = "rgba(255,255,255,0.1)";
+            ctx.fillStyle = keysPressed[i] ? "rgba(255, 255, 255, 0.15)" : "rgba(255,255,255,0.03)";
             ctx.beginPath();
-            ctx.arc(LANE_X[i], TARGET_Y, 8, 0, 2 * Math.PI);
+            ctx.arc(LANE_X[i], TARGET_Y, 12, 0, 2 * Math.PI);
             ctx.fill();
         }
 
-        // 3. Render Live Chart Arrow Step Notes
+        // 3. Render Moving StepChart Notes (Classic Arrow Shapes Representation)
         for (let i = 0; i < notes.length; i++) {
             let note = notes[i];
             if (note.active && note.y > -50 && note.y < canvas.height + 50) {
                 ctx.fillStyle = LANE_COLOR[note.lane];
+                
+                // Draw geometric procedural arrow shape instead of plain circles
+                ctx.save();
+                ctx.translate(LANE_X[note.lane], note.y);
+                
+                // Rotate based on track orientation direction mapping
+                if(note.lane === 0) ctx.rotate(Math.PI / 2);      // Left Arrow
+                else if(note.lane === 1) ctx.rotate(0);            // Down Arrow
+                else if(note.lane === 2) ctx.rotate(Math.PI);      // Up Arrow
+                else if(note.lane === 3) ctx.rotate(-Math.PI / 2);     // Right Arrow
+                
                 ctx.beginPath();
-                ctx.arc(LANE_X[note.lane], note.y, 26, 0, 2 * Math.PI);
+                ctx.moveTo(0, 28);
+                ctx.lineTo(26, 0);
+                ctx.lineTo(12, 0);
+                ctx.lineTo(12, -24);
+                ctx.lineTo(-12, -24);
+                ctx.lineTo(-12, 0);
+                ctx.lineTo(-26, 0);
+                ctx.closePath();
                 ctx.fill();
                 
-                // Render internal indicator pattern geometry
+                // Stroke layer outline accentuation
                 ctx.strokeStyle = "#ffffff";
                 ctx.lineWidth = 2;
-                ctx.beginPath();
-                ctx.arc(LANE_X[note.lane], note.y, 14, 0, 2 * Math.PI);
                 ctx.stroke();
+                
+                ctx.restore();
             }
         }
 
-        // 4. Render UI Core Dashboard Overlays
+        // 4. Score Dashboard Overlay HUD UI Componentry
         ctx.fillStyle = "#ffffff";
-        ctx.font = "bold 20px 'Courier New'";
+        ctx.font = "bold 18px 'Courier New'";
         ctx.textAlign = "left";
-        ctx.fillText(`SCORE: ${score.toString().padStart(6, '0')}`, 20, 40);
+        ctx.fillText(`SCORE: ${score.toString().padStart(6, '0')}`, 25, 40);
+        
+        ctx.textAlign = "right";
+        ctx.fillStyle = "#888db0";
+        ctx.fillText(`MAX: ${maxCombo}`, canvas.width - 25, 40);
         
         if (combo > 0) {
             ctx.textAlign = "center";
             ctx.fillStyle = "#00ffcc";
-            ctx.font = "bold 28px 'Courier New'";
-            ctx.fillText(`${combo}`, canvas.width / 2, canvas.height - 120);
-            ctx.font = "14px 'Courier New'";
-            ctx.fillStyle = "#888";
-            ctx.fillText("COMBO", canvas.width / 2, canvas.height - 100);
+            ctx.font = "bold 36px 'Courier New'";
+            ctx.fillText(`${combo}`, canvas.width / 2, canvas.height - 130);
+            ctx.font = "bold 14px 'Courier New'";
+            ctx.fillStyle = "#656a8a";
+            ctx.fillText("COMBO", canvas.width / 2, canvas.height - 105);
         }
 
-        if (judgmentText) {
+        if (judgmentText && judgmentTimer > 0) {
             ctx.textAlign = "center";
             ctx.fillStyle = judgmentColor;
-            ctx.font = "bold 32px 'Courier New'";
-            ctx.fillText(judgmentText, canvas.width / 2, canvas.height / 2);
+            ctx.font = "bold 34px 'Courier New'";
+            ctx.fillText(judgmentText, canvas.width / 2, canvas.height / 2 + 30);
         }
     }
 
-    function gameLoop() {
-        updateEngine();
-        drawEngine();
-        requestAnimationFrame(gameLoop);
+    function mainEngineLoop() {
+        processEnginePhysics();
+        renderGraphics();
+        requestAnimationFrame(mainEngineLoop);
     }
 
-    // Initialize Game Execution 
-    generateDemoChart();
-    gameLoop();
+    // Instantiate and Launch App Loop Lifecycle
+    buildSongChart();
+    mainEngineLoop();
 })();
 </script>
 </body>
